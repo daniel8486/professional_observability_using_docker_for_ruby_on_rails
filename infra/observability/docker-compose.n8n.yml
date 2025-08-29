@@ -1,0 +1,36 @@
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=domain
+      - N8N_PROTOCOL=https
+      - WEBHOOK_TUNNEL_URL=https:domain
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=user
+      - N8N_BASIC_AUTH_PASSWORD=userpassword
+      - N8N_TIMEZONE=America/Sao_Paulo
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - /var/www/app/backend/shared/infra:/bkp_db 
+      - /var/run/docker.sock:/var/run/docker.sock 
+    networks:
+      - monitoring
+      - filas
+
+volumes:
+  n8n_data:
+
+networks:
+  monitoring:
+    external: true
+    name: infra_monitoring
+  filas:
+    external: true
+    name: infra_filas

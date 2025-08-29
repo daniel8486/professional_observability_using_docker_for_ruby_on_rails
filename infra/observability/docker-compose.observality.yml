@@ -1,0 +1,244 @@
+services:
+  # Monitoramento | Prometheus | Grafana | Loki | Promtail
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
+      interval: 60s
+      timeout: 20s
+      retries: 5
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    volumes:
+      - ./config/prometheus:/etc/prometheus
+      - prometheus_data:/prometheus
+        #ports:
+        #- "9090:9090"
+    networks:
+      - monitoring
+      - filas
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      interval: 60s
+      timeout: 20s
+      retries: 5
+    ports:
+      - "3001:3000"
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: danieldjam
+      GF_SECURITY_ADMIN_PASSWORD: "@AthusOtto@0401@@"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning
+      - ./config/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./config/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - monitoring
+      - filas
+
+  loki:
+    image: grafana/loki:2.9.2
+    container_name: loki
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3100/ready"]
+      interval: 60s
+      timeout: 20s
+      retries: 5
+      #ports:
+      #- "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    user: "0:0"
+    volumes:
+      - ./config/loki:/etc/loki
+      - loki_data:/loki
+    restart: unless-stopped
+    networks:
+      - monitoring
+
+  promtail:
+    #image: grafana/promtail:2.9.2
+    build:
+      context: caminho/para/o/Dockerfile/promtail
+      dockerfile: Dockerfile.promtail
+    container_name: promtail
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9080/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    volumes:
+      - /var/www/app/backend/shared/infra/config/promtail:/etc/promtail # Alterar Caminho da sua Aplicacao
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/www/app/backend/shared/log:/www/app/backend/shared/log:ro
+    command: -config.file=/etc/promtail/config.yml
+    restart: unless-stopped
+    depends_on:
+      - loki
+    networks:
+      - monitoring
+
+  # Cache e Filas | Redis | RabbitMQ | Sidekiq
+  redis:
+    image: redis:7
+    container_name: redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 60s
+      timeout: 20s
+      retries: 5
+      #ports:
+      #- "6379:6379"
+    volumes:
+      - redis_data:/data
+        #- ./config/redis.conf:/usr/local/etc/redis/redis.conf
+        #command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    command: ["redis-server"]
+    networks:
+      - filas
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 60s
+      timeout: 20s
+      retries: 5
+    ports:
+      # - "5672:5672"    # Porta padrão do RabbitMQ
+      - "15672:15672"  # Interface web de administração
+    environment:
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: userpassword
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - filas
+
+  rabbitmq-exporter:
+    image: kbudde/rabbitmq-exporter
+    container_name: rabbitmq_exporter
+    environment:
+      RABBIT_USER: user
+      RABBIT_PASSWORD: userpassword
+      RABBIT_URL: http://rabbitmq:15672
+        #ports:
+        #- "9419:9419"
+    networks:
+      - filas
+    depends_on:
+      - rabbitmq
+
+  sidekiq:
+    build:
+      context: /var/www/app/backend/current # Caminho da Aplicacao no Servidor
+      dockerfile: infra/Dockerfile.sidekiq
+    container_name: sidekiq
+    volumes:
+      - /var/www/app/backend/shared/config/database.yml:/app/config/database.yml
+      - /var/www/app/backend/shared/config/master.key:/app/config/master.key
+      - /var/www/app/backend/current/log:/app/log
+    depends_on:
+      - redis
+    environment:
+      # REDIS_URL: redis://:A1b2C3d4E5f6G7h8J9k0L1m2N3o4P5@redis:6379/0
+      REDIS_URL: redis://redis:6379/0
+      RAILS_ENV: production
+      DEVISE_JWT_KEY: PASSWORD_JWT
+        # PROMETHEUS_EXPORTER_PORT: 7433
+    command: sh -c "bundle exec sidekiq -r ./config/environment.rb"
+    #command: sh -c 'pwd && ls -l && ls -la config'
+    networks:
+      - filas
+
+  postgres_exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: postgres_exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://postgres:seuPassword@172.19.0.1:5432/seuBancoDeDados?sslmode=disable"
+        #ports:
+        #- "9187:9187"
+        # volumes:
+        # - ./infra/config/prometheus/dsn.txt:/tmp/dsn.txt:ro
+        # command:
+        # - --config=/etc/config.yml
+    networks:
+      - monitoring
+      - filas
+
+  node_exporter:
+    image: prom/node-exporter:latest
+    container_name: node_exporter
+      # ports:
+      # - "9100:9100"
+    restart: unless-stopped
+    networks:
+      - monitoring
+    command:
+      - '--path.rootfs=/host'
+    volumes:
+      - /:/host:ro,rslave
+
+  pushgateway:
+    image: prom/pushgateway:latest
+    container_name: pushgateway
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9091/metrics"]
+      interval: 60s
+      timeout: 20s
+      retries: 5
+      #ports:
+      #- "9091:9091"
+    restart: unless-stopped
+    networks:
+      - monitoring
+
+  redis_exporter:
+    image: redis_exporter_custom:latest
+    container_name: redis_exporter
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9121/metrics"]
+      interval: 60s
+      timeout: 20s
+      retries: 5
+      #ports:
+      #- "9121:9121"
+    environment:
+      REDIS_ADDR: "redis:6379"
+        # REDIS_PASSWORD: "Password"
+    networks:
+      - filas
+      - monitoring
+    depends_on:
+      - redis
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  loki_data:
+  redis_data:
+  rabbitmq_data:
+  node_exporter_data:
+  docker_exporter_data:
+
+networks:
+  monitoring:
+    driver: bridge
+  filas:
+    driver: bridge

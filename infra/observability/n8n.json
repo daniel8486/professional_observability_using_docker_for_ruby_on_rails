@@ -1,0 +1,146 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "cronExpression": "*/5 * * * *"
+      },
+      "id": "Cron",
+      "name": "Cron",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://prometheus:9090/-/healthy",
+        "responseFormat": "string",
+        "options": {}
+      },
+      "id": "Check Prometheus",
+      "name": "Check Prometheus",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [500, 200]
+    },
+    {
+      "parameters": {
+        "url": "http://grafana:3000/api/health",
+        "responseFormat": "json",
+        "options": {}
+      },
+      "id": "Check Grafana",
+      "name": "Check Grafana",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [500, 350]
+    },
+    {
+      "parameters": {
+        "url": "http://loki:3100/ready",
+        "responseFormat": "string",
+        "options": {}
+      },
+      "id": "Check Loki",
+      "name": "Check Loki",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [500, 500]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $node[\"Check Prometheus\"].json[\"statusCode\"] !== 200 || $node[\"Check Grafana\"].json[\"status\"] !== 'ok' || $node[\"Check Loki\"].json[\"statusCode\"] !== 200 }}"
+            }
+          ]
+        }
+      },
+      "id": "IF",
+      "name": "IF",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "monitor@seudominio.com",
+        "toEmail": "seuemail@seudominio.com",
+        "subject": "Alerta: Serviço de monitoramento offline",
+        "text": "Prometheus, Grafana ou Loki estão offline!"
+      },
+      "id": "Send Email",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [1000, 300]
+    }
+  ],
+  "connections": {
+    "Cron": {
+      "main": [
+        [
+          {
+            "node": "Check Prometheus",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Grafana",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Loki",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Prometheus": {
+      "main": [
+        [
+          {
+            "node": "IF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Grafana": {
+      "main": [
+        [
+          {
+            "node": "IF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Loki": {
+      "main": [
+        [
+          {
+            "node": "IF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

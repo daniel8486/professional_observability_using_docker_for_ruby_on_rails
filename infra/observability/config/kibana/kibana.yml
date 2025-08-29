@@ -1,0 +1,11 @@
+server.host: "0.0.0.0"
+elasticsearch.hosts: ["http://seuIP:9200" ]
+monitoring.ui.container.elasticsearch.enabled: true
+
+xpack.security.encryptionKey: "JzrX1qGZaPM4WEvKyGK4WF8r/Yl53/Z8j9fkebIbSj1="
+xpack.encryptedSavedObjects.encryptionKey: "LUYBA/AX7z69Jdhi1qbSy5XM2NU8oUe20fKdQRQq07s="
+xpack.reporting.encryptionKey: "5pqNHGWA8vOUqAo2F3lt7Ki8o9oOizXx0yFU2WU69Zg="
+elasticsearch.username: "kibana_system"
+elasticsearch.password: "o6_Uanx72munjPQLsnCe"
+
+# bin/elasticsearch-reset-password -u kibana_system

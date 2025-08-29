@@ -1,0 +1,128 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "cronExpression": "*/5 * * * *"
+      },
+      "id": "Cron",
+      "name": "Cron",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "command": "docker ps -a --filter \"status=exited\" --format \"{{.Names}}\""
+      },
+      "id": "CheckContainers",
+      "name": "CheckContainers",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $node[\"CheckContainers\"].json[\"stdout\"].trim() }}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "IF",
+      "name": "IF",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "command": "for c in $(docker ps -a --filter \"status=exited\" --format \"{{.Names}}\" ); do docker start $c; done"
+      },
+      "id": "StartContainers",
+      "name": "StartContainers",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "command": "uptime | awk -F'(up |,  [0-9]+ user)' '{print $2}'"
+      },
+      "id": "GetUptime",
+      "name": "GetUptime",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "command": "who -b | awk '{print $3, $4}'"
+      },
+      "id": "GetLastBoot",
+      "name": "GetLastBoot",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1400, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "danielmatos404@gmail.com",
+        "toEmail": "danielmatos404@gmail.com",
+        "subject": "Containers Docker reiniciados",
+        "text": "Os seguintes containers foram reiniciados:\n{{$node[\"CheckContainers\"].json[\"stdout\"]}}\n\nTempo de atividade do servidor: {{$node[\"GetUptime\"].json[\"stdout\"]}}\nÚltima reinicialização: {{$node[\"GetLastBoot\"].json[\"stdout\"]}}"
+      },
+      "id": "SendEmail",
+      "name": "SendEmail",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [1600, 300]
+    }
+  ],
+  "connections": {
+    "Cron": {
+      "main": [
+        [
+          { "node": "CheckContainers", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "CheckContainers": {
+      "main": [
+        [
+          { "node": "IF", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "IF": {
+      "main": [
+        [
+          { "node": "StartContainers", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "StartContainers": {
+      "main": [
+        [
+          { "node": "GetUptime", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "GetUptime": {
+      "main": [
+        [
+          { "node": "GetLastBoot", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "GetLastBoot": {
+      "main": [
+        [
+          { "node": "SendEmail", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  }
+}

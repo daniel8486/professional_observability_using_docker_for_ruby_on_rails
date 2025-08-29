@@ -1,0 +1,12 @@
+exclude_databases:
+  - template0
+  - template1
+  - postgres
+
+custom_metrics:
+  - name: active_connections
+    query: "SELECT count(*) FROM pg_stat_activity WHERE state = 'active';"
+    metrics:
+      - active_connections:
+          usage: "GAUGE"
+          description: "Número de conexões ativas no banco"

@@ -1,0 +1,18 @@
+FROM ruby:3.3
+
+WORKDIR /app
+
+# Instale dependências do sistema
+RUN apt-get update -qq && apt-get install -y build-essential nodejs
+
+# Copie o Gemfile e Gemfile.lock
+COPY Gemfile Gemfile.lock ./
+
+# Instale gems
+RUN bundle install
+
+# Copie o restante da aplicação
+COPY . ./
+
+# Comando padrão: inicia o Sidekiq
+CMD ["bundle", "exec", "sidekiq", "-r", "./config/environment.rb"]

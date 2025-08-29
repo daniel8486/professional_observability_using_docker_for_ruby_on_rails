@@ -1,0 +1,11 @@
+filebeat.inputs:
+  - type: log
+    paths:
+      - /logs/rails/*.log
+      - /var/log/syslog
+      - /logs/postgres/*.log
+
+output.elasticsearch:
+  hosts: ["http://seuIP:9200"]
+  username: "elastic"
+  password: "fjmop-eWZI1FQtp9oFFd"

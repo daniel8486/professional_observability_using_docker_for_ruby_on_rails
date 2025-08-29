@@ -1,0 +1,84 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - alert_rules.yml
+
+scrape_configs:
+  # - job_name: 'prometheus'
+  #   static_configs:
+  #     - targets: ['localhost:9090']
+
+  - job_name: 'services-app-https'
+    static_configs:
+      - targets: ['dominioOrIP:443']
+    metrics_path: '/metrics'
+    scheme: https
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  - job_name: 'services-app-http'
+    static_configs:
+      - targets: ['dominioOrIP:80']
+    metrics_path: '/metrics'
+    scheme: http
+    scrape_interval: 15s
+    scrape_timeout: 10s
+  
+  # - job_name: 'node'
+  #   static_configs:
+  #     - targets: ['node_exporter:9100']
+  
+  # - job_name: 'cadvisor'
+  #   static_configs:
+  #   - targets: ['cadvisor:8080']
+  
+  # - job_name: 'pushgateway'
+  #   static_configs:
+  #   - targets: ['pushgateway:9091']
+
+  # Preparar para futuros serviços
+  # - job_name: 'rabbitmq'
+  #   static_configs:
+  #     - targets: ['rabbitmq:15692']
+  #   metrics_path: '/metrics'
+  #   scrape_interval: 30s
+
+  # - job_name: 'rabbitmq-exporter'
+  #   static_configs:
+  #     - targets: ['rabbitmq_exporter:9419']
+
+  # - job_name: 'postgres'
+  #   static_configs:
+  #     - targets: ['postgres_exporter:9187']
+  #   scrape_interval: 30s
+
+  # - job_name: 'redis_exporter'
+  #   static_configs:
+  #     - targets: ['redis_exporter:9121']
+  #   scrape_interval: 30s
+  
+  # - job_name: 'sidekiq'
+  #   static_configs:
+  #     - targets: ['sidekiq:7433']
+  #   metrics_path: '/metrics'
+  #   scrape_interval: 30s
+
+  - job_name: 'services'
+    static_configs:
+      - targets:
+          - 'localhost:9090'
+          - 'node_exporter:9100'
+          - 'pushgateway:9091'
+          - 'sidekiq:7433'
+          - 'rabbitmq_exporter:9419'
+          - 'postgres_exporter:9187'
+          - 'redis_exporter:9121'
+          - 'rabbitmq:15692'
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    
+  - job_name: 'custom-metrics'
+    static_configs:
+      - targets: ['localhost:9105']

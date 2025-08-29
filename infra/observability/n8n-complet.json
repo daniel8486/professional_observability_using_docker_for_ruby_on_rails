@@ -1,0 +1,194 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "cronExpression": "*/5 * * * *"
+      },
+      "id": "Cron",
+      "name": "Cron",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://prometheus:9090/-/healthy",
+        "responseFormat": "string"
+      },
+      "id": "Check Prometheus",
+      "name": "Check Prometheus",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [500, 100]
+    },
+    {
+      "parameters": {
+        "url": "http://grafana:3000/api/health",
+        "responseFormat": "json"
+      },
+      "id": "Check Grafana",
+      "name": "Check Grafana",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [500, 180]
+    },
+    {
+      "parameters": {
+        "url": "http://loki:3100/ready",
+        "responseFormat": "string"
+      },
+      "id": "Check Loki",
+      "name": "Check Loki",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [500, 260]
+    },
+    {
+      "parameters": {
+        "url": "http://promtail:9080/ready",
+        "responseFormat": "string"
+      },
+      "id": "Check Promtail",
+      "name": "Check Promtail",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [500, 340]
+    },
+    {
+      "parameters": {
+        "url": "http://redis:6379",
+        "responseFormat": "string"
+      },
+      "id": "Check Redis",
+      "name": "Check Redis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [500, 420]
+    },
+    {
+      "parameters": {
+        "url": "http://rabbitmq:15672",
+        "responseFormat": "string"
+      },
+      "id": "Check RabbitMQ",
+      "name": "Check RabbitMQ",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [500, 500]
+    },
+    {
+      "parameters": {
+        "url": "http://rabbitmq_exporter:9419/metrics",
+        "responseFormat": "string"
+      },
+      "id": "Check RabbitMQ Exporter",
+      "name": "Check RabbitMQ Exporter",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [500, 580]
+    },
+    {
+      "parameters": {
+        "url": "http://postgres_exporter:9187/metrics",
+        "responseFormat": "string"
+      },
+      "id": "Check Postgres Exporter",
+      "name": "Check Postgres Exporter",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [500, 660]
+    },
+    {
+      "parameters": {
+        "url": "http://node_exporter:9100/metrics",
+        "responseFormat": "string"
+      },
+      "id": "Check Node Exporter",
+      "name": "Check Node Exporter",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [500, 740]
+    },
+    {
+      "parameters": {
+        "url": "http://pushgateway:9091/metrics",
+        "responseFormat": "string"
+      },
+      "id": "Check Pushgateway",
+      "name": "Check Pushgateway",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [500, 820]
+    },
+    {
+      "parameters": {
+        "url": "http://redis_exporter:9121/metrics",
+        "responseFormat": "string"
+      },
+      "id": "Check Redis Exporter",
+      "name": "Check Redis Exporter",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [500, 900]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $node[\"Check Prometheus\"].json[\"statusCode\"] !== 200 || $node[\"Check Grafana\"].json[\"status\"] !== 'ok' || $node[\"Check Loki\"].json[\"statusCode\"] !== 200 || $node[\"Check Promtail\"].json[\"statusCode\"] !== 200 || $node[\"Check Redis\"].json[\"statusCode\"] !== 200 || $node[\"Check RabbitMQ\"].json[\"statusCode\"] !== 200 || $node[\"Check RabbitMQ Exporter\"].json[\"statusCode\"] !== 200 || $node[\"Check Postgres Exporter\"].json[\"statusCode\"] !== 200 || $node[\"Check Node Exporter\"].json[\"statusCode\"] !== 200 || $node[\"Check Pushgateway\"].json[\"statusCode\"] !== 200 || $node[\"Check Redis Exporter\"].json[\"statusCode\"] !== 200 }}"
+            }
+          ]
+        }
+      },
+      "id": "IF",
+      "name": "IF",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [800, 500]
+    },
+    {
+      "parameters": {
+        "fromEmail": "monitor@seudominio.com",
+        "toEmail": "seuemail@seudominio.com",
+        "subject": "Alerta: Serviço Docker Compose Offline",
+        "text": "Um ou mais serviços do docker-compose estão offline!"
+      },
+      "id": "Send Email",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [1100, 500]
+    }
+  ],
+  "connections": {
+    "Cron": {
+      "main": [
+        [
+          { "node": "Check Prometheus", "type": "main", "index": 0 },
+          { "node": "Check Grafana", "type": "main", "index": 0 },
+          { "node": "Check Loki", "type": "main", "index": 0 },
+          { "node": "Check Promtail", "type": "main", "index": 0 },
+          { "node": "Check Redis", "type": "main", "index": 0 },
+          { "node": "Check RabbitMQ", "type": "main", "index": 0 },
+          { "node": "Check RabbitMQ Exporter", "type": "main", "index": 0 },
+          { "node": "Check Postgres Exporter", "type": "main", "index": 0 },
+          { "node": "Check Node Exporter", "type": "main", "index": 0 },
+          { "node": "Check Pushgateway", "type": "main", "index": 0 },
+          { "node": "Check Redis Exporter", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Check Prometheus": { "main": [ [ { "node": "IF", "type": "main", "index": 0 } ] ] },
+    "Check Grafana": { "main": [ [ { "node": "IF", "type": "main", "index": 0 } ] ] },
+    "Check Loki": { "main": [ [ { "node": "IF", "type": "main", "index": 0 } ] ] },
+    "Check Promtail": { "main": [ [ { "node": "IF", "type": "main", "index": 0 } ] ] },
+    "Check RabbitMQ": { "main": [ [ { "node": "IF", "type": "main", "index": 0 } ] ] },
+    "Check RabbitMQ Exporter": { "main": [ [ { "node": "IF", "type": "main", "index": 0 } ] ] },
+    "Check Postgres Exporter": { "main": [ [ { "node": "IF", "type": "main", "index": 0 } ] ] },
+    "Check Node Exporter": { "main": [ [ { "node": "IF", "type": "main", "index": 0 } ] ] },
+    "Check Pushgateway": { "main": [ [ { "node": "IF", "type": "main", "index": 0 } ] ] },
+    "Check Redis Exporter": { "main": [ [ { "node": "IF", "type": "main", "index": 0 } ] ] },
+    "IF": { "main": [ [ { "node": "Send Email", "type": "main", "index": 0 } ] ] }
+  }
+}

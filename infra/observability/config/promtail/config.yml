@@ -1,0 +1,148 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # Logs dos containers Docker
+  - job_name: containers
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: containerlogs
+          service_name: docker_containers
+          __path__: /var/lib/docker/containers/*/*-json.log
+    pipeline_stages:
+      - json:
+          expressions:
+            output: log
+            stream: stream
+            time: time
+      - json:
+          expressions:
+            tag:
+          source: attrs
+      - regex:
+          expression: (?P<container_name>(?:[^|])*[^|])
+          source: tag
+      - timestamp:
+          format: RFC3339Nano
+          source: time
+      - labels:
+          stream:
+          container_name:
+      - output:
+          source: output
+
+  # Logs do sistema
+  - job_name: system
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: varlogs
+          service_name: system_logs
+          __path__: /var/log/*.log
+    pipeline_stages:
+      - regex:
+          expression: (?P<filename>.+)
+          source: __path__
+      - labels:
+          filename:
+
+  # Logs específicos do Rails
+  - job_name: api_services_app_logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: rails
+          service_name: api_services_app
+          __path__: /var/www/api_services_app/app_back_end/shared/log/*.log
+      - targets:
+          - localhost
+        labels:
+          job: rails
+          service_name: api_services_app
+          __path__: /var/www/api_services_app/app_back_end/shared/log/*.log
+    pipeline_stages:
+      - multiline:
+          firstline: '^\d{4}-\d{2}-\d{2}'
+          max_wait_time: 3s
+      - regex:
+          expression: '^(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) (?P<level>\w+) (?P<message>.*)'
+      - timestamp:
+          format: '2006-01-02 15:04:05'
+          source: timestamp
+      - labels:
+          level:
+      - output:
+          source: message
+
+  # Logs do PostgreSQL
+  - job_name: postgres_logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: postgres
+          service_name: postgres_logs
+          __path__: /var/log/postgresql/*.log
+    pipeline_stages:
+      - regex:
+          expression: (?P<message>.*)
+      - output:
+          source: message
+
+  # Logs do NGINX
+  - job_name: nginx
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: nginx
+          service_name: nginx
+          __path__: /var/log/nginx/*.log
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<remote_addr>\S+) - (?P<remote_user>\S+) \[(?P<time_local>[^\]]+)\] "(?P<request>[^"]*)" (?P<status>\d+) (?P<body_bytes_sent>\d+) "(?P<http_referer>[^"]*)" "(?P<http_user_agent>[^"]*)"'
+      - labels:
+          remote_addr:
+          remote_user:
+          time_local:
+          request:
+          status:
+          body_bytes_sent:
+          http_referer:
+          http_user_agent:
+
+  # Logs Dockers Customizados
+  - job_name: docker_monitor_logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: docker_monitor
+          __path__: /var/log/docker-monitor/*/*.log
+    pipeline_stages:
+          # - match:
+          #selector: '{job="docker_monitor"}'
+          #stages:
+      - regex:
+          expression: '^Container: (?P<container>[^\n]+)\n  ID: (?P<id>[^\n]+)\n  Status: (?P<status>[^\n]+)\n  Health: (?P<health>[^\n]+)\n  StartedAt: (?P<started_at>[^\n]+) Network: (?P<network>[^|]+) \| Containers: (?P<connected>.*)'
+      - labels:
+          container:
+          id:
+          status:
+          health:
+          started_at:
+          network:
+          connected:
+      - output:
+          source: .

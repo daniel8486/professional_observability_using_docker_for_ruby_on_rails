@@ -1,0 +1,158 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "cronExpression": "0 2 * * *"
+      },
+      "id": "Cron",
+      "name": "Cron",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "command": "PGPASSWORD=\"seuPassword\" pg_dump -h 172.17.0.1 -U postgres -d seuBancoDeDados -F c -b -v -f /bkp_db/backup_$(date +%Y%m%d).dump"
+      },
+      "id": "Backup",
+      "name": "Backup",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [500, 200]
+    },
+    {
+      "parameters": {
+        "command": "PGPASSWORD=\"seuPassword\" pg_isready -h 172.17.0.1 -U postgres"
+      },
+      "id": "Check",
+      "name": "Check",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [700, 200]
+    },
+    {
+      "parameters": {
+        "command": "PGPASSWORD=\"seuPassword\" reindexdb -h 172.17.0.1 -U postgres -d seuBancoDeDados"
+      },
+      "id": "Repair",
+      "name": "Repair",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "command": "PGPASSWORD=\"seuPassword\" vacuumdb -h 172.17.0.1 -U postgres -d seuBancoDeDados --analyze"
+      },
+      "id": "Analyze",
+      "name": "Analyze",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1100, 200]
+    },
+    {
+      "parameters": {
+        "command": "PGPASSWORD=\"seuPassword\" vacuumdb -h 172.17.0.1 -U postgres -d seuBancoDeDados --full"
+      },
+      "id": "Optimize",
+      "name": "Optimize",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1300, 200]
+    },
+    {
+      "parameters": {
+        "command": "ls -lh /tmp/backup_$(date +%Y%m%d).dump | awk '{print $5}'"
+      },
+      "id": "GetSize",
+      "name": "GetSize",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1500, 200]
+    },
+    {
+      "parameters": {
+        "fromEmail": "email@example.com",
+        "toEmail": "email2@example.com",
+        "subject": "Backup PostgreSQL realizado com sucesso",
+        "text": "Backup realizado com sucesso!\nTamanho do arquivo: {{$node[\"GetSize\"].json[\"stdout\"]}}"
+      },
+      "id": "SendSuccess",
+      "name": "SendSuccess",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [1700, 200]
+    },
+    {
+      "parameters": {
+        "fromEmail": "email@example.com",
+        "toEmail": "email2@example.com",
+        "subject": "Erro no backup PostgreSQL",
+        "text": "Ocorreu um erro no backup!\nEtapa: {{$json[\"node\"]}}\nMensagem: {{$json[\"error\"]}}"
+      },
+      "id": "SendError",
+      "name": "SendError",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [900, 500]
+    }
+  ],
+  "connections": {
+    "Cron": {
+      "main": [
+        [
+          { "node": "Backup", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Backup": {
+      "main": [
+        [
+          { "node": "Check", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Check": {
+      "main": [
+        [
+          { "node": "Repair", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Repair": {
+      "main": [
+        [
+          { "node": "Analyze", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Analyze": {
+      "main": [
+        [
+          { "node": "Optimize", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Optimize": {
+      "main": [
+        [
+          { "node": "GetSize", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "GetSize": {
+      "main": [
+        [
+          { "node": "SendSuccess", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          { "node": "SendError", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  }
+}
