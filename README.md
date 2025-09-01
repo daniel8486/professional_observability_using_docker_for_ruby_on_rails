@@ -1,6 +1,6 @@
-# Observalidade Ruby On Rails
+# Observabilidade Ruby On Rails
 
-Estes docker servem para criar a observalidade de API, Banco de Dados ( Postgres ), Docker UP e DOWN, saúde dos containers, Redis, Sidekiq , RabbitMQ , Grafana e Prometheus.
+Estes docker servem para criar a observabilidade de API, Banco de Dados ( Postgres ), Docker UP e DOWN, saúde dos containers, Redis, Sidekiq , RabbitMQ , Grafana e Prometheus.
 
 
 # Essas GEM devem ser adcionadas ao projeto no Gemfile
